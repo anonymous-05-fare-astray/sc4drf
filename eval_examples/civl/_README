@@ -1,0 +1,66 @@
+
+
+
+Semi-barriers (sync by one way signal):
+sync1_norace.c: 2 thread sync using one lock, ok
+sync1_race.c: like above but wrong: t1 can set then unset, then t0 sets, both write.
+critsec3.c  : signal with busy wait loop using critical sections (*)
+critsec3_race : has race due to different critical section names (*)
+atomic3.c   :  sync with busy wait loop using atomic
+atomic3_race.c : races because the write is not protected by atomic
+
+Barriers:
+bar1_norace.c: 2-thread flag barrier using busy-wait loops and critical, no race
+bar1_race.c: wrong 2-thread flag barrier using busy-waits, race
+bar2_norace.c: uses locks to create a barrier that is used once
+bar2_race.c: like bar2_norace, but each thread uses its own lock, which doesn't work
+bar3_norace.c: implements 2-thread reuseable barrier using 3 locks, no race
+bar3_race.c: racy version of above, one synchronization commented out
+
+Diffusions:
+diffusion1_norace.c: for loop: new values go into separately malloc objects, swapped
+diffusion1_race.c: same as above, but swap is wrong so u1=u2 and race
+diffusion2_norace.c: like diffusion1, but two parts of one malloced object used
+diffusion2_race.c: like above, but mistake in starting point of second half
+
+Producer-consumer:
+critsec2.c: : single producer single consumer with critical sections
+critsec2_race : has race due to different critical section names
+prodcons.c  : multiple producer, multiple consumer with critical sections
+prodcons_race.c : races due to critical sections have different names
+
+
+
+Extra:
+bar1_subtle_race.c: same as bar1_norace.c, but with printfs that race
+
+
+-----
+
+civlomp -input_omp_thread_max=5  diffusion1_norace.c
+civlomp -input_omp_thread_max=5 -errorBound=3 diffusion1_race.c
+civlomp -input_omp_thread_max=5  diffusion2_norace.c 
+civlomp -input_omp_thread_max=5  diffusion2_race.c
+civlomp -input_omp_thread_max=5  sync1_norace.c
+civlomp -input_omp_thread_max=5  sync1_race.c
+
+sed 's/#include/__include__/g' bar1_norace_mod.c | cpp | sed 's/__NL__/\n/g' | sed 's/__pragma__/\#pragma/g' | sed 's/__include__/#include/g' > bar1_norace_mod_cpp.c
+
+
+civlomp -input_omp_thread_max=2 bar1_norace_prep.c
+civlomp -input_omp_thread_max=2  bar1_race_prep.c
+
+civlomp -input_omp_thread_max=2 bar2_norace.c
+civlomp -input_omp_thread_max=2 bar2_race.c
+
+civlomp -input_omp_thread_max=2 bar3_norace_prep.c
+civlomp -input_omp_thread_max=2 -errorBound=10000 bar3_race_prep.c
+   # this last one has deadlocks and data race
+
+civlomp -input_omp_thread_max=2  bar1_subtle_race_prep.c
+
+-----
+
+
+
+10 new programs. * 2.
